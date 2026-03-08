@@ -10,7 +10,8 @@ dev:
 # 本番ビルド & 起動
 prod:
 	docker build --target production -t $(IMAGE) .
-	docker run --rm -p 3501:3000 \
+	docker run --rm -p 3501:3501 \
+		-e PORT=3501 \
 		-v ./input:/media/input:ro \
 		-v ./output:/media/output \
 		-v ./data:/media/data \
