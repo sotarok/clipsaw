@@ -13,15 +13,14 @@ export async function GET(
   const { path: pathSegments } = await params;
   const relativePath = pathSegments.join("/");
 
-  // Resolve: first try under /media directly, then under /media/input as fallback
+  // Resolve with path traversal protection
   let filePath: string | null = null;
-  const directCandidate = path.join(MEDIA_ROOT, relativePath);
-  if (directCandidate.startsWith(MEDIA_ROOT) && existsSync(directCandidate)) {
+  const directCandidate = path.resolve(MEDIA_ROOT, relativePath);
+  if (directCandidate.startsWith(MEDIA_ROOT + "/") && existsSync(directCandidate)) {
     filePath = directCandidate;
   } else {
-    // Fallback: treat as relative to /media/input (for source file paths like "band/practice.wav")
-    const inputCandidate = path.join(MEDIA_ROOT, "input", relativePath);
-    if (inputCandidate.startsWith(MEDIA_ROOT) && existsSync(inputCandidate)) {
+    const inputCandidate = path.resolve(MEDIA_ROOT, "input", relativePath);
+    if (inputCandidate.startsWith(MEDIA_ROOT + "/") && existsSync(inputCandidate)) {
       filePath = inputCandidate;
     }
   }
@@ -44,9 +43,9 @@ export async function GET(
     }
 
     const start = parseInt(match[1], 10);
-    const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+    const end = match[2] ? Math.min(parseInt(match[2], 10), fileSize - 1) : fileSize - 1;
 
-    if (start >= fileSize || end >= fileSize) {
+    if (start >= fileSize || start > end) {
       return new NextResponse("Range not satisfiable", {
         status: 416,
         headers: { "Content-Range": `bytes */${fileSize}` },

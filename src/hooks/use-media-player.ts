@@ -1,9 +1,11 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 
 export function useMediaPlayer() {
   const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
+  const volumeRef = useRef(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -35,14 +37,21 @@ export function useMediaPlayer() {
     if (!mediaRef.current) return;
     const clamped = Math.max(0, Math.min(1, v));
     mediaRef.current.volume = clamped;
+    volumeRef.current = clamped;
     setVolume(clamped);
   }, []);
 
   const bindMedia = useCallback((el: HTMLVideoElement | HTMLAudioElement | null) => {
+    // Clean up previous element's listeners
+    if (cleanupRef.current) {
+      cleanupRef.current();
+      cleanupRef.current = null;
+    }
+
     mediaRef.current = el;
     if (!el) return;
 
-    el.volume = volume;
+    el.volume = volumeRef.current;
 
     const onTimeUpdate = () => setCurrentTime(el.currentTime);
     const onDurationChange = () => setDuration(el.duration || 0);
@@ -57,12 +66,11 @@ export function useMediaPlayer() {
     el.addEventListener("pause", onPause);
     el.addEventListener("ended", onEnded);
 
-    // If metadata already loaded
     if (el.duration) {
       setDuration(el.duration);
     }
 
-    return () => {
+    cleanupRef.current = () => {
       el.removeEventListener("timeupdate", onTimeUpdate);
       el.removeEventListener("durationchange", onDurationChange);
       el.removeEventListener("loadedmetadata", onDurationChange);
@@ -70,7 +78,6 @@ export function useMediaPlayer() {
       el.removeEventListener("pause", onPause);
       el.removeEventListener("ended", onEnded);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {

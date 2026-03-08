@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { SplitProgress, SplitSegment } from "@/types";
 
 export function useSplit() {
@@ -67,6 +67,16 @@ export function useSplit() {
       setIsRunning(false);
       setError(err instanceof Error ? err.message : "Split failed");
     }
+  }, []);
+
+  // Cleanup EventSource on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
   }, []);
 
   const reset = useCallback(() => {

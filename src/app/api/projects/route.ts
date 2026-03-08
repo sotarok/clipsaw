@@ -16,16 +16,23 @@ export async function GET() {
     .orderBy(desc(projects.updatedAt))
     .all();
 
-  // Attach sourceFiles count
-  const result = allProjects.map((p) => {
-    const files = db
-      .select()
-      .from(sourceFiles)
-      .where(eq(sourceFiles.projectId, p.id))
-      .orderBy(asc(sourceFiles.sortOrder))
-      .all();
-    return { ...p, sourceFiles: files };
-  });
+  // Batch load all sourceFiles to avoid N+1
+  const allSourceFiles = db
+    .select()
+    .from(sourceFiles)
+    .orderBy(asc(sourceFiles.sortOrder))
+    .all();
+
+  const sfMap = new Map<string, (typeof allSourceFiles)[number][]>();
+  for (const sf of allSourceFiles) {
+    if (!sfMap.has(sf.projectId)) sfMap.set(sf.projectId, []);
+    sfMap.get(sf.projectId)!.push(sf);
+  }
+
+  const result = allProjects.map((p) => ({
+    ...p,
+    sourceFiles: sfMap.get(p.id) || [],
+  }));
 
   return NextResponse.json({ projects: result });
 }
@@ -109,7 +116,7 @@ export async function POST(request: NextRequest) {
 
   // Create default settings
   const ext = getExtension(files[0]);
-  const defaultFormat = ["wav", "flac"].includes(ext) ? "copy" : "copy";
+  const defaultFormat = "copy";
   db.insert(projectSettings)
     .values({
       projectId,

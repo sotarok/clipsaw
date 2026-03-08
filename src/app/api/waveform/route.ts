@@ -19,20 +19,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Resolve: try /media/{filePath} first, then /media/input/{filePath}, then absolute
+  // Resolve with path traversal protection
   let fullPath: string | null = null;
-  const directCandidate = path.join(MEDIA_ROOT, filePath);
-  if (directCandidate.startsWith(MEDIA_ROOT) && existsSync(directCandidate)) {
+  const directCandidate = path.resolve(MEDIA_ROOT, filePath);
+  if (directCandidate.startsWith(MEDIA_ROOT + "/") && existsSync(directCandidate)) {
     fullPath = directCandidate;
   } else {
-    const inputCandidate = path.join(MEDIA_ROOT, "input", filePath);
-    if (inputCandidate.startsWith(MEDIA_ROOT) && existsSync(inputCandidate)) {
+    const inputCandidate = path.resolve(MEDIA_ROOT, "input", filePath);
+    if (inputCandidate.startsWith(MEDIA_ROOT + "/") && existsSync(inputCandidate)) {
       fullPath = inputCandidate;
     }
   }
-  // Also try as absolute path (e.g. /media/data/concat/xxx.wav from DB)
-  if (!fullPath && filePath.startsWith("/media/") && existsSync(filePath)) {
-    fullPath = filePath;
+  // Also try as absolute path (must be under /media/)
+  if (!fullPath && filePath.startsWith("/")) {
+    const resolved = path.resolve(filePath);
+    if (resolved.startsWith(MEDIA_ROOT + "/") && existsSync(resolved)) {
+      fullPath = resolved;
+    }
   }
 
   if (!fullPath) {

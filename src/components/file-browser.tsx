@@ -48,7 +48,7 @@ export function FileBrowser({ open, onOpenChange, onSelect, selectedPaths = [] }
     if (!open) return;
     setLoading(true);
     fetch("/api/files")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("Failed"); return r.json(); })
       .then((data) => setFiles(data.files || []))
       .catch(() => setFiles([]))
       .finally(() => setLoading(false));

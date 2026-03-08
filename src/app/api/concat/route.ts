@@ -26,7 +26,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Start concat in background (don't await)
-  startConcat(projectId, files);
+  startConcat(projectId, files).catch((err) => {
+    console.error(`Concat failed for project ${projectId}:`, err);
+  });
 
   return NextResponse.json({
     status: "processing",

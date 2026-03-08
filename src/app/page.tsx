@@ -39,6 +39,7 @@ export default function Home() {
   const handleSelectProject = useCallback(async (p: Project) => {
     try {
       const res = await fetch(`/api/projects/${p.id}`);
+      if (!res.ok) throw new Error("Failed to load project");
       const detail: ProjectDetail = await res.json();
       setProject(detail);
       setOutputFormat(
@@ -46,8 +47,8 @@ export default function Home() {
       );
       setMp3Bitrate(detail.settings?.mp3Bitrate || "192k");
       setScreen("editor");
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("Failed to load project:", err);
     }
   }, []);
 
@@ -57,6 +58,7 @@ export default function Home() {
   }, []);
 
   const handleBack = () => {
+    player.pause();
     setProject(null);
     setScreen("list");
     split.reset();

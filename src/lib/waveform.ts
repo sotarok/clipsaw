@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync } from "fs";
 import path from "path";
 import { generatePCM, probeMedia } from "./ffmpeg";
 import type { WaveformResponse } from "@/types";
@@ -13,7 +13,10 @@ function ensureCacheDir() {
 }
 
 function getCacheKey(filePath: string, width: number): string {
-  const hash = createHash("md5").update(`${filePath}:${width}`).digest("hex");
+  const stat = statSync(filePath);
+  const hash = createHash("md5")
+    .update(`${filePath}:${width}:${stat.size}:${stat.mtimeMs}`)
+    .digest("hex");
   return hash;
 }
 
@@ -35,8 +38,10 @@ export async function generateWaveform(
   // Probe for metadata
   const info = await probeMedia(filePath);
 
-  // Generate raw PCM
-  const pcmBuffer = await generatePCM(filePath);
+  // Generate raw PCM with sample rate capped to reduce memory
+  // For a 3h file at 4000Hz: 4000*3600*3*4 = ~173MB. Cap to width*4 samples.
+  const targetSamples = width * 4;
+  const pcmBuffer = await generatePCM(filePath, targetSamples);
   const pcmData = new Float32Array(
     pcmBuffer.buffer,
     pcmBuffer.byteOffset,

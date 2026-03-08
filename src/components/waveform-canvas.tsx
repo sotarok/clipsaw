@@ -29,7 +29,7 @@ export function WaveformCanvas({
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || peaks.length === 0) return;
+    if (!canvas || peaks.length === 0 || duration <= 0) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;

@@ -34,15 +34,22 @@ export async function startConcat(
 
   emitProgress(projectId, { projectId, percent: 0, status: "processing" });
 
-  try {
-    // Get extension from first file
-    const ext = getExtension(files[0]);
-    const outputPath = path.join(CONCAT_DIR, `${projectId}.${ext}`);
+  // Validate file names
+  for (const f of files) {
+    if (f.includes("..") || f.includes("\n") || f.includes("\r") || f.includes("\0")) {
+      emitProgress(projectId, { projectId, percent: 0, status: "error", error: `Invalid file name: ${f}` });
+      return;
+    }
+  }
 
-    // Generate concat list file
-    const listPath = path.join(CONCAT_DIR, `${projectId}_list.txt`);
+  const ext = getExtension(files[0]);
+  const outputPath = path.join(CONCAT_DIR, `${projectId}.${ext}`);
+  const listPath = path.join(CONCAT_DIR, `${projectId}_list.txt`);
+
+  try {
+    // Generate concat list file (escape single quotes for FFmpeg)
     const listContent = files
-      .map((f) => `file '/media/input/${f}'`)
+      .map((f) => `file '/media/input/${f.replace(/'/g, "'\\''")}'`)
       .join("\n");
     writeFileSync(listPath, listContent);
 
@@ -87,8 +94,6 @@ export async function startConcat(
       duration: info.duration,
     });
 
-    // Cleanup list file
-    try { unlinkSync(listPath); } catch { /* ignore */ }
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : "Unknown error";
 
@@ -103,6 +108,8 @@ export async function startConcat(
       status: "error",
       error: errorMsg,
     });
+  } finally {
+    try { unlinkSync(listPath); } catch { /* ignore */ }
   }
 }
 

@@ -14,7 +14,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Start split in background (don't await)
-  startSplit(projectId, segments, outputFormat || "copy", mp3Bitrate);
+  startSplit(projectId, segments, outputFormat || "copy", mp3Bitrate).catch((err) => {
+    console.error(`Split failed for project ${projectId}:`, err);
+  });
 
   return NextResponse.json({
     status: "processing",

@@ -181,13 +181,15 @@ export function concatMedia(
 }
 
 /** Generate raw PCM data from media file for waveform */
-export function generatePCM(filePath: string): Promise<Buffer> {
+export function generatePCM(filePath: string, targetSamples: number = 16000): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    // Cap sample rate to limit memory usage (targetSamples * 4 bytes max)
+    const sampleRate = Math.max(100, Math.min(8000, targetSamples));
     const args = [
       "-i", filePath,
       "-ac", "1",
       "-f", "f32le",
-      "-ar", "8000",
+      "-ar", sampleRate.toString(),
       "pipe:1",
     ];
 

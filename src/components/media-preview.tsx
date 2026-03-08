@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -38,7 +38,11 @@ export function MediaPreview({
 }: MediaPreviewProps) {
   const [peaks, setPeaks] = useState<WaveformPeak[]>([]);
   const [muted, setMuted] = useState(false);
-  const prevVolume = useState(volume)[0];
+  const prevVolumeRef = useRef(volume);
+
+  useEffect(() => {
+    if (volume > 0) prevVolumeRef.current = volume;
+  }, [volume]);
 
   // Fetch waveform data
   useEffect(() => {
@@ -55,7 +59,7 @@ export function MediaPreview({
 
   const toggleMute = () => {
     if (muted) {
-      onVolumeChange(prevVolume || 1);
+      onVolumeChange(prevVolumeRef.current || 1);
       setMuted(false);
     } else {
       onVolumeChange(0);
@@ -70,7 +74,7 @@ export function MediaPreview({
       {mediaType === "video" ? (
         <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
           <video
-            ref={(el) => onBindMedia(el)}
+            ref={onBindMedia}
             src={mediaUrl}
             className="w-full h-full"
             playsInline
@@ -92,7 +96,7 @@ export function MediaPreview({
 
       {/* Audio element (hidden for audio-only) */}
       {mediaType === "audio" && (
-        <audio ref={(el) => onBindMedia(el)} src={mediaUrl} preload="metadata" />
+        <audio ref={onBindMedia} src={mediaUrl} preload="metadata" />
       )}
 
       {/* Waveform for video (small, below video) */}

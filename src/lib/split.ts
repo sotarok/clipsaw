@@ -58,9 +58,15 @@ export async function startSplit(
 
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
+    const sanitizedName = seg.name.replace(/[<>:"/\\|?*\0]/g, "_").replace(/\.\./g, "_");
     const inputExt = getExtension(inputFile);
     const outputExt = outputFormat === "mp3" ? "mp3" : inputExt;
-    const outputFile = path.join(outputDir, `${seg.name}.${outputExt}`);
+    const outputFile = path.join(outputDir, `${sanitizedName}.${outputExt}`);
+
+    // Verify output stays within outputDir
+    if (!path.resolve(outputFile).startsWith(path.resolve(outputDir))) {
+      throw new Error(`Invalid segment name: ${seg.name}`);
+    }
 
     emitProgress(projectId, {
       current: i + 1,

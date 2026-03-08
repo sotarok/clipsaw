@@ -36,19 +36,20 @@ export function useTimelines(projectId: string | null, initialTimelines: Timelin
 
   const addTimeline = useCallback((name: string, fromTime: number = 0, toTime: number = 0) => {
     const id = crypto.randomUUID().slice(0, 12);
-    const newTimeline: Timeline = {
-      id,
-      projectId: projectIdRef.current || "",
-      name,
-      fromTime,
-      toTime,
-      sortOrder: timelines.length,
-    };
-    const updated = [...timelines, newTimeline];
-    setTimelines(updated);
-    syncToDb(updated);
-    return newTimeline;
-  }, [timelines, syncToDb]);
+    setTimelines((prev) => {
+      const newTimeline: Timeline = {
+        id,
+        projectId: projectIdRef.current || "",
+        name,
+        fromTime,
+        toTime,
+        sortOrder: prev.length,
+      };
+      const updated = [...prev, newTimeline];
+      syncToDb(updated);
+      return updated;
+    });
+  }, [syncToDb]);
 
   const updateTimeline = useCallback((id: string, changes: Partial<Timeline>) => {
     setTimelines((prev) => {
