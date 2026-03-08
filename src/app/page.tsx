@@ -13,6 +13,7 @@ import { SplitButton } from "@/components/split-button";
 import { useMediaPlayer } from "@/hooks/use-media-player";
 import { useTimelines } from "@/hooks/use-timelines";
 import { useSplit } from "@/hooks/use-split";
+import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help";
 import type { Project, ProjectDetail, Timeline } from "@/types";
 
 type Screen = "list" | "create" | "editor";
@@ -184,6 +185,7 @@ export default function Home() {
           </div>
         )}
       </main>
+      <KeyboardShortcutsHelp />
     </div>
   );
 }
