@@ -1,6 +1,10 @@
-# Clipsaw
+<p align="center">
+  <img src="public/clipsaw.png" alt="Clipsaw" width="128" />
+</p>
 
-ローカル環境で動作する動画・音声カッター Web アプリ。Docker 上で完結し、ホスト環境を汚さない。
+<h1 align="center">Clipsaw</h1>
+
+<p align="center">ローカル環境で動作する動画・音声カッター Web アプリ。Docker 上で完結し、ホスト環境を汚さない。</p>
 
 長時間の録音・録画ファイルを任意の区間で分割・書き出す。複数ファイルにまたがる録音・録画にも対応し、事前結合してから作業できる。
 
