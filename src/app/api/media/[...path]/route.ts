@@ -3,8 +3,8 @@ import { existsSync, statSync, createReadStream } from "fs";
 import path from "path";
 import { getMimeType, getExtension } from "@/lib/utils";
 
-// Serve files from both /media/input and /media/data
-const ALLOWED_ROOTS = ["/media/input", "/media/data"];
+// Serve files from /media (input, data, etc.)
+const MEDIA_ROOT = "/media";
 
 export async function GET(
   request: NextRequest,
@@ -13,15 +13,16 @@ export async function GET(
   const { path: pathSegments } = await params;
   const relativePath = pathSegments.join("/");
 
-  // Find file in allowed roots
+  // Resolve: first try under /media directly, then under /media/input as fallback
   let filePath: string | null = null;
-  for (const root of ALLOWED_ROOTS) {
-    const candidate = path.join(root, relativePath);
-    // Prevent path traversal
-    if (!candidate.startsWith(root)) continue;
-    if (existsSync(candidate)) {
-      filePath = candidate;
-      break;
+  const directCandidate = path.join(MEDIA_ROOT, relativePath);
+  if (directCandidate.startsWith(MEDIA_ROOT) && existsSync(directCandidate)) {
+    filePath = directCandidate;
+  } else {
+    // Fallback: treat as relative to /media/input (for source file paths like "band/practice.wav")
+    const inputCandidate = path.join(MEDIA_ROOT, "input", relativePath);
+    if (inputCandidate.startsWith(MEDIA_ROOT) && existsSync(inputCandidate)) {
+      filePath = inputCandidate;
     }
   }
 

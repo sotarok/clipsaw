@@ -33,7 +33,7 @@ export default function Home() {
   const split = useSplit();
 
   const mediaPath = project
-    ? project.concatFilePath ?? project.sourceFiles[0]?.filePath ?? ""
+    ? (project.concatFilePath?.replace(/^\/media\//, "") ?? project.sourceFiles[0]?.filePath ?? "")
     : "";
 
   const handleSelectProject = useCallback(async (p: Project) => {

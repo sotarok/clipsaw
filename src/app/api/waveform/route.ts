@@ -3,8 +3,7 @@ import path from "path";
 import { existsSync } from "fs";
 import { generateWaveform } from "@/lib/waveform";
 
-const INPUT_DIR = "/media/input";
-const DATA_DIR = "/media/data";
+const MEDIA_ROOT = "/media";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -20,18 +19,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Try /media/input first, then /media/data (for concat files)
-  let fullPath = path.join(INPUT_DIR, filePath);
-  if (!existsSync(fullPath)) {
-    // Try as absolute path within /media/data
-    if (filePath.startsWith("/media/data/")) {
-      fullPath = filePath;
-    } else {
-      fullPath = path.join(DATA_DIR, filePath);
+  // Resolve: try /media/{filePath} first, then /media/input/{filePath}, then absolute
+  let fullPath: string | null = null;
+  const directCandidate = path.join(MEDIA_ROOT, filePath);
+  if (directCandidate.startsWith(MEDIA_ROOT) && existsSync(directCandidate)) {
+    fullPath = directCandidate;
+  } else {
+    const inputCandidate = path.join(MEDIA_ROOT, "input", filePath);
+    if (inputCandidate.startsWith(MEDIA_ROOT) && existsSync(inputCandidate)) {
+      fullPath = inputCandidate;
     }
   }
+  // Also try as absolute path (e.g. /media/data/concat/xxx.wav from DB)
+  if (!fullPath && filePath.startsWith("/media/") && existsSync(filePath)) {
+    fullPath = filePath;
+  }
 
-  if (!existsSync(fullPath)) {
+  if (!fullPath) {
     return NextResponse.json({ error: "File not found" }, { status: 404 });
   }
 
