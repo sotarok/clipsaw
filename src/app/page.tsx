@@ -147,6 +147,7 @@ export default function Home() {
               duration={player.duration}
               sourceFiles={project.sourceFiles}
               onSeek={player.seek}
+              onTogglePlay={player.togglePlay}
             />
 
             {/* Timeline Editor */}

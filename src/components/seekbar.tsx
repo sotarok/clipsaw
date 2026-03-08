@@ -9,9 +9,10 @@ interface SeekbarProps {
   duration: number;
   sourceFiles?: SourceFile[];
   onSeek: (time: number) => void;
+  onTogglePlay?: () => void;
 }
 
-export function Seekbar({ currentTime, duration, sourceFiles = [], onSeek }: SeekbarProps) {
+export function Seekbar({ currentTime, duration, sourceFiles = [], onSeek, onTogglePlay }: SeekbarProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -44,6 +45,19 @@ export function Seekbar({ currentTime, duration, sourceFiles = [], onSeek }: See
     document.addEventListener("mouseup", handleMouseUp);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === " ") {
+      e.preventDefault();
+      onTogglePlay?.();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      onSeek(Math.max(0, currentTime - 5));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      onSeek(Math.min(duration, currentTime + 5));
+    }
+  };
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   // File boundary positions
@@ -67,7 +81,9 @@ export function Seekbar({ currentTime, duration, sourceFiles = [], onSeek }: See
       <div
         ref={barRef}
         className="relative h-3 cursor-pointer group"
+        tabIndex={0}
         onMouseDown={handleMouseDown}
+        onKeyDown={handleKeyDown}
       >
         {/* Background track */}
         <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-1.5 rounded-full bg-secondary">

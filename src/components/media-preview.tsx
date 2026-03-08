@@ -89,6 +89,7 @@ export function MediaPreview({
             timelines={timelines}
             sourceFiles={sourceFiles}
             onSeek={onSeek}
+            onTogglePlay={onTogglePlay}
             height={200}
           />
         </div>
@@ -109,6 +110,7 @@ export function MediaPreview({
             timelines={timelines}
             sourceFiles={sourceFiles}
             onSeek={onSeek}
+            onTogglePlay={onTogglePlay}
             height={48}
           />
         </div>

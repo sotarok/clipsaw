@@ -10,6 +10,7 @@ interface WaveformCanvasProps {
   timelines?: Timeline[];
   sourceFiles?: SourceFile[];
   onSeek?: (time: number) => void;
+  onTogglePlay?: () => void;
   height?: number;
   className?: string;
 }
@@ -21,6 +22,7 @@ export function WaveformCanvas({
   timelines = [],
   sourceFiles = [],
   onSeek,
+  onTogglePlay,
   height = 120,
   className = "",
 }: WaveformCanvasProps) {
@@ -105,6 +107,19 @@ export function WaveformCanvas({
     return () => observer.disconnect();
   }, [draw]);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === " ") {
+      e.preventDefault();
+      onTogglePlay?.();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      onSeek?.(Math.max(0, currentTime - 5));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      onSeek?.(Math.min(duration, currentTime + 5));
+    }
+  };
+
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onSeek || !canvasRef.current || duration <= 0) return;
     const rect = canvasRef.current.getBoundingClientRect();
@@ -114,7 +129,13 @@ export function WaveformCanvas({
   };
 
   return (
-    <div ref={containerRef} className={`w-full ${className}`} style={{ height }}>
+    <div
+      ref={containerRef}
+      className={`w-full ${className}`}
+      style={{ height }}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-pointer"
