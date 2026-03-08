@@ -1,0 +1,89 @@
+"use client";
+
+import { useRef, useState, useCallback, useEffect } from "react";
+
+export function useMediaPlayer() {
+  const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+
+  const play = useCallback(() => {
+    mediaRef.current?.play();
+  }, []);
+
+  const pause = useCallback(() => {
+    mediaRef.current?.pause();
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    if (!mediaRef.current) return;
+    if (mediaRef.current.paused) {
+      mediaRef.current.play();
+    } else {
+      mediaRef.current.pause();
+    }
+  }, []);
+
+  const seek = useCallback((time: number) => {
+    if (!mediaRef.current) return;
+    mediaRef.current.currentTime = Math.max(0, Math.min(time, mediaRef.current.duration || 0));
+  }, []);
+
+  const changeVolume = useCallback((v: number) => {
+    if (!mediaRef.current) return;
+    const clamped = Math.max(0, Math.min(1, v));
+    mediaRef.current.volume = clamped;
+    setVolume(clamped);
+  }, []);
+
+  const bindMedia = useCallback((el: HTMLVideoElement | HTMLAudioElement | null) => {
+    mediaRef.current = el;
+    if (!el) return;
+
+    el.volume = volume;
+
+    const onTimeUpdate = () => setCurrentTime(el.currentTime);
+    const onDurationChange = () => setDuration(el.duration || 0);
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onEnded = () => setIsPlaying(false);
+
+    el.addEventListener("timeupdate", onTimeUpdate);
+    el.addEventListener("durationchange", onDurationChange);
+    el.addEventListener("loadedmetadata", onDurationChange);
+    el.addEventListener("play", onPlay);
+    el.addEventListener("pause", onPause);
+    el.addEventListener("ended", onEnded);
+
+    // If metadata already loaded
+    if (el.duration) {
+      setDuration(el.duration);
+    }
+
+    return () => {
+      el.removeEventListener("timeupdate", onTimeUpdate);
+      el.removeEventListener("durationchange", onDurationChange);
+      el.removeEventListener("loadedmetadata", onDurationChange);
+      el.removeEventListener("play", onPlay);
+      el.removeEventListener("pause", onPause);
+      el.removeEventListener("ended", onEnded);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return {
+    mediaRef,
+    bindMedia,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    play,
+    pause,
+    togglePlay,
+    seek,
+    changeVolume,
+  };
+}
