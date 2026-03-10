@@ -14,7 +14,7 @@ import { useMediaPlayer } from "@/hooks/use-media-player";
 import { useTimelines } from "@/hooks/use-timelines";
 import { useSplit } from "@/hooks/use-split";
 import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help";
-import type { Project, ProjectDetail, Timeline } from "@/types";
+import type { Project, ProjectDetail } from "@/types";
 
 type Screen = "list" | "create" | "editor";
 
@@ -23,6 +23,7 @@ export default function Home() {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [outputFormat, setOutputFormat] = useState<"copy" | "mp3">("copy");
   const [mp3Bitrate, setMp3Bitrate] = useState("192k");
+  const [isGlobalMode, setIsGlobalMode] = useState(false);
 
   const player = useMediaPlayer();
   const {
@@ -53,14 +54,16 @@ export default function Home() {
     }
   }, []);
 
-  const handleProjectCreated = useCallback((detail: ProjectDetail) => {
+  const handleProjectCreated = useCallback((detail: ProjectDetail, options?: { globalMode?: boolean }) => {
     setProject(detail);
+    setIsGlobalMode(options?.globalMode ?? false);
     setScreen("editor");
   }, []);
 
   const handleBack = () => {
     player.pause();
     setProject(null);
+    setIsGlobalMode(false);
     setScreen("list");
     split.reset();
   };
@@ -85,7 +88,8 @@ export default function Home() {
       project.id,
       timelines.map((t) => ({ name: t.name, from: t.fromTime, to: t.toTime })),
       outputFormat,
-      outputFormat === "mp3" ? mp3Bitrate : undefined
+      outputFormat === "mp3" ? mp3Bitrate : undefined,
+      isGlobalMode ? "default" : undefined
     );
   };
 

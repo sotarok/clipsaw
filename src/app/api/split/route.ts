@@ -4,7 +4,7 @@ import type { SplitRequest } from "@/types";
 
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as SplitRequest;
-  const { projectId, segments, outputFormat, mp3Bitrate } = body;
+  const { projectId, segments, outputFormat, mp3Bitrate, outputSubDir } = body;
 
   if (!projectId || !segments || segments.length === 0) {
     return NextResponse.json(
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Start split in background (don't await)
-  startSplit(projectId, segments, outputFormat || "copy", mp3Bitrate).catch((err) => {
+  startSplit(projectId, segments, outputFormat || "copy", mp3Bitrate, outputSubDir).catch((err) => {
     console.error(`Split failed for project ${projectId}:`, err);
   });
 

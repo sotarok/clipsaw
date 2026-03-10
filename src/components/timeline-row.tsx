@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, SkipBack, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatTime, parseTime } from "@/lib/utils";
@@ -81,6 +81,15 @@ export function TimelineRow({
         <Button
           variant="outline"
           size="sm"
+          className="h-6 w-6 px-0"
+          onClick={() => onUpdate(timeline.id, { fromTime: 0 })}
+          title="最初から"
+        >
+          <SkipBack className="h-3 w-3" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           className="h-6 text-[11px] px-2"
           onClick={() => onSetFrom(timeline.id)}
         >
@@ -138,6 +147,15 @@ export function TimelineRow({
           onClick={() => onSetTo(timeline.id)}
         >
           Set To
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 w-6 px-0"
+          onClick={() => onUpdate(timeline.id, { toTime: duration })}
+          title="最後まで"
+        >
+          <SkipForward className="h-3 w-3" />
         </Button>
       </div>
 

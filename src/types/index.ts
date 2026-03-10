@@ -36,6 +36,7 @@ export interface SplitRequest {
   segments: SplitSegment[];
   outputFormat: "copy" | "mp3";
   mp3Bitrate?: string;
+  outputSubDir?: string;
 }
 
 export interface SplitProgress {

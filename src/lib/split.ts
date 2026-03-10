@@ -23,6 +23,7 @@ export async function startSplit(
   segments: SplitSegment[],
   outputFormat: "copy" | "mp3",
   mp3Bitrate?: string,
+  outputSubDir?: string,
 ): Promise<void> {
   const project = db
     .select()
@@ -48,7 +49,9 @@ export async function startSplit(
   }
 
   // Create output directory
-  const dirName = sanitizeDirName(project.name) || new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+  const dirName = outputSubDir
+    ? sanitizeDirName(outputSubDir)
+    : sanitizeDirName(project.name) || new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
   const outputDir = path.join(OUTPUT_DIR, dirName);
   if (!existsSync(outputDir)) {
     mkdirSync(outputDir, { recursive: true });

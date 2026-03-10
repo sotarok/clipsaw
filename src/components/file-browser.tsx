@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { FileAudio, FileVideo, Folder, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ interface FileBrowserProps {
   onOpenChange: (open: boolean) => void;
   onSelect: (files: FileEntry[]) => void;
   selectedPaths?: string[];
+  singleSelect?: boolean;
 }
 
 function formatFileSize(bytes: number): string {
@@ -39,10 +40,11 @@ function groupByDirectory(files: FileEntry[]): Map<string, FileEntry[]> {
   return groups;
 }
 
-export function FileBrowser({ open, onOpenChange, onSelect, selectedPaths = [] }: FileBrowserProps) {
+export function FileBrowser({ open, onOpenChange, onSelect, selectedPaths, singleSelect = false }: FileBrowserProps) {
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set(selectedPaths));
+  const stablePaths = useMemo(() => selectedPaths ?? [], [selectedPaths?.join(",")]);
+  const [selected, setSelected] = useState<Set<string>>(new Set(stablePaths));
 
   useEffect(() => {
     if (!open) return;
@@ -55,8 +57,8 @@ export function FileBrowser({ open, onOpenChange, onSelect, selectedPaths = [] }
   }, [open]);
 
   useEffect(() => {
-    setSelected(new Set(selectedPaths));
-  }, [selectedPaths]);
+    setSelected(new Set(stablePaths));
+  }, [stablePaths]);
 
   const toggleFile = (path: string) => {
     setSelected((prev) => {
@@ -103,24 +105,45 @@ export function FileBrowser({ open, onOpenChange, onSelect, selectedPaths = [] }
                   )}
                   <div className="space-y-0.5">
                     {dirFiles.map((file) => (
-                      <label
-                        key={file.path}
-                        className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={selected.has(file.path)}
-                          onCheckedChange={() => toggleFile(file.path)}
-                        />
-                        {file.mediaType === "video" ? (
-                          <FileVideo className="h-4 w-4 text-primary shrink-0" />
-                        ) : (
-                          <FileAudio className="h-4 w-4 text-primary shrink-0" />
-                        )}
-                        <span className="text-sm truncate flex-1">{file.name}</span>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {formatFileSize(file.size)}
-                        </span>
-                      </label>
+                      singleSelect ? (
+                        <button
+                          key={file.path}
+                          className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer w-full text-left"
+                          onClick={() => {
+                            onSelect([file]);
+                            onOpenChange(false);
+                          }}
+                        >
+                          {file.mediaType === "video" ? (
+                            <FileVideo className="h-4 w-4 text-primary shrink-0" />
+                          ) : (
+                            <FileAudio className="h-4 w-4 text-primary shrink-0" />
+                          )}
+                          <span className="text-sm truncate flex-1">{file.name}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {formatFileSize(file.size)}
+                          </span>
+                        </button>
+                      ) : (
+                        <label
+                          key={file.path}
+                          className="flex items-center gap-3 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selected.has(file.path)}
+                            onCheckedChange={() => toggleFile(file.path)}
+                          />
+                          {file.mediaType === "video" ? (
+                            <FileVideo className="h-4 w-4 text-primary shrink-0" />
+                          ) : (
+                            <FileAudio className="h-4 w-4 text-primary shrink-0" />
+                          )}
+                          <span className="text-sm truncate flex-1">{file.name}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {formatFileSize(file.size)}
+                          </span>
+                        </label>
+                      )
                     ))}
                   </div>
                 </div>
@@ -130,15 +153,23 @@ export function FileBrowser({ open, onOpenChange, onSelect, selectedPaths = [] }
         </ScrollArea>
 
         <DialogFooter>
-          <div className="text-sm text-muted-foreground mr-auto">
-            {selected.size} 件選択中
-          </div>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            キャンセル
-          </Button>
-          <Button onClick={handleConfirm} disabled={selected.size === 0}>
-            選択
-          </Button>
+          {singleSelect ? (
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              キャンセル
+            </Button>
+          ) : (
+            <>
+              <div className="text-sm text-muted-foreground mr-auto">
+                {selected.size} 件選択中
+              </div>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                キャンセル
+              </Button>
+              <Button onClick={handleConfirm} disabled={selected.size === 0}>
+                選択
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import { SourceFiles } from "@/components/source-files";
 import type { FileEntry, SourceFile, ConcatProgress, ProjectDetail } from "@/types";
 
 interface ProjectCreatorProps {
-  onCreated: (project: ProjectDetail) => void;
+  onCreated: (project: ProjectDetail, options?: { globalMode?: boolean }) => void;
   onCancel: () => void;
 }
 
@@ -22,6 +22,8 @@ export function ProjectCreator({ onCreated, onCancel }: ProjectCreatorProps) {
   const [creating, setCreating] = useState(false);
   const [concatProgress, setConcatProgress] = useState<ConcatProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [quickEditBrowserOpen, setQuickEditBrowserOpen] = useState(false);
+  const [quickCreating, setQuickCreating] = useState(false);
 
   const handleFilesSelected = useCallback((selected: FileEntry[]) => {
     const newFiles: SourceFile[] = selected.map((f, i) => ({
@@ -49,6 +51,40 @@ export function ProjectCreator({ onCreated, onCancel }: ProjectCreatorProps) {
       prev.filter((f) => f.id !== id).map((f, i) => ({ ...f, sortOrder: i }))
     );
   };
+
+  const handleQuickEdit = useCallback(async (selected: FileEntry[]) => {
+    if (selected.length === 0) return;
+    const file = selected[0];
+    setQuickCreating(true);
+    setError(null);
+
+    try {
+      // Auto-generate project name from filename (without extension)
+      const autoName = file.name.replace(/\.[^.]+$/, "");
+
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: autoName,
+          files: [file.path],
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Failed to create project" }));
+        throw new Error(data.error || "Failed to create project");
+      }
+
+      const project = await res.json();
+      const detailRes = await fetch(`/api/projects/${project.id}`);
+      const detail: ProjectDetail = await detailRes.json();
+      onCreated(detail, { globalMode: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create project");
+      setQuickCreating(false);
+    }
+  }, [onCreated]);
 
   const handleCreate = async () => {
     if (!name.trim() || files.length === 0) return;
@@ -133,6 +169,47 @@ export function ProjectCreator({ onCreated, onCancel }: ProjectCreatorProps) {
         <Button variant="ghost" onClick={onCancel}>
           キャンセル
         </Button>
+      </div>
+
+      {/* Quick Edit */}
+      <div className="rounded-lg border border-border p-4 space-y-2">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => setQuickEditBrowserOpen(true)}
+          disabled={quickCreating}
+        >
+          {quickCreating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              準備中...
+            </>
+          ) : (
+            <>
+              <Zap className="h-4 w-4" />
+              ファイルを直接編集
+            </>
+          )}
+        </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          プロジェクトを自動作成してすぐに編集を開始
+        </p>
+      </div>
+
+      <FileBrowser
+        open={quickEditBrowserOpen}
+        onOpenChange={setQuickEditBrowserOpen}
+        onSelect={handleQuickEdit}
+        singleSelect
+      />
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">または</span>
+        </div>
       </div>
 
       <div className="space-y-2">

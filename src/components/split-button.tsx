@@ -24,6 +24,19 @@ export function SplitButton({
   onSplit,
   onReset,
 }: SplitButtonProps) {
+  const handleOpenFolder = async () => {
+    if (!outputDir) return;
+    try {
+      await fetch("/api/open-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: outputDir }),
+      });
+    } catch {
+      // ignore - may not work in Docker
+    }
+  };
+
   if (outputDir) {
     return (
       <div className="flex items-center gap-3">
@@ -31,6 +44,9 @@ export function SplitButton({
           <FolderOpen className="h-4 w-4" />
           <span className="font-mono text-xs">{outputDir}</span>
         </div>
+        <Button variant="outline" size="sm" onClick={handleOpenFolder}>
+          Open
+        </Button>
         <Button variant="outline" size="sm" onClick={onReset}>
           OK
         </Button>

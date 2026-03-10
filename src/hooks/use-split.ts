@@ -14,7 +14,8 @@ export function useSplit() {
     projectId: string,
     segments: SplitSegment[],
     outputFormat: "copy" | "mp3",
-    mp3Bitrate?: string
+    mp3Bitrate?: string,
+    outputSubDir?: string
   ) => {
     setIsRunning(true);
     setProgress(null);
@@ -25,7 +26,7 @@ export function useSplit() {
       const res = await fetch("/api/split", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, segments, outputFormat, mp3Bitrate }),
+        body: JSON.stringify({ projectId, segments, outputFormat, mp3Bitrate, outputSubDir }),
       });
 
       if (!res.ok) {
