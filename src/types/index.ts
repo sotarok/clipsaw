@@ -70,8 +70,8 @@ export interface Project {
   duration: number | null;
   mediaType: string | null;
   concatStatus: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface SourceFile {

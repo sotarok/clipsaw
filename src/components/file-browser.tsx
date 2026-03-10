@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { FileAudio, FileVideo, Folder, Loader2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -49,9 +50,8 @@ export function FileBrowser({ open, onOpenChange, onSelect, selectedPaths, singl
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    fetch("/api/files")
-      .then((r) => { if (!r.ok) throw new Error("Failed"); return r.json(); })
-      .then((data) => setFiles(data.files || []))
+    invoke<FileEntry[]>("list_files")
+      .then((data) => setFiles(data || []))
       .catch(() => setFiles([]))
       .finally(() => setLoading(false));
   }, [open]);
@@ -91,7 +91,7 @@ export function FileBrowser({ open, onOpenChange, onSelect, selectedPaths, singl
             </div>
           ) : files.length === 0 ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              /media/input にファイルがありません
+              入力ディレクトリにファイルがありません
             </div>
           ) : (
             <div className="space-y-3">

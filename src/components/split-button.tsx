@@ -1,5 +1,6 @@
 "use client";
 
+import { invoke } from "@tauri-apps/api/core";
 import { Scissors, Loader2, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -27,13 +28,9 @@ export function SplitButton({
   const handleOpenFolder = async () => {
     if (!outputDir) return;
     try {
-      await fetch("/api/open-folder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: outputDir }),
-      });
+      await invoke("open_folder", { path: outputDir });
     } catch {
-      // ignore - may not work in Docker
+      // ignore
     }
   };
 

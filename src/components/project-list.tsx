@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { Folder, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,17 +13,24 @@ interface ProjectListProps {
   onNewProject: () => void;
 }
 
+interface ListProjectsResponse {
+  projects: Array<Project & { sourceFiles: unknown[] }>;
+}
+
 export function ProjectList({ onSelect, onNewProject }: ProjectListProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchProjects = () => {
+  const fetchProjects = async () => {
     setLoading(true);
-    fetch("/api/projects")
-      .then((r) => r.json())
-      .then((data) => setProjects(data.projects || []))
-      .catch(() => setProjects([]))
-      .finally(() => setLoading(false));
+    try {
+      const data: ListProjectsResponse = await invoke("list_projects");
+      setProjects(data.projects || []);
+    } catch {
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -33,7 +41,7 @@ export function ProjectList({ onSelect, onNewProject }: ProjectListProps) {
     e.stopPropagation();
     if (!confirm("このプロジェクトを削除しますか？")) return;
     try {
-      await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      await invoke("delete_project", { id });
       setProjects((prev) => prev.filter((p) => p.id !== id));
     } catch {
       // ignore

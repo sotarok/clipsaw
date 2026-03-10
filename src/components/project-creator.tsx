@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { Loader2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { FileBrowser } from "@/components/file-browser";
 import { SourceFiles } from "@/components/source-files";
-import type { FileEntry, SourceFile, ConcatProgress, ProjectDetail } from "@/types";
+import type { FileEntry, SourceFile, ConcatProgress, ProjectDetail, Project } from "@/types";
 
 interface ProjectCreatorProps {
   onCreated: (project: ProjectDetail, options?: { globalMode?: boolean }) => void;
@@ -24,6 +26,16 @@ export function ProjectCreator({ onCreated, onCancel }: ProjectCreatorProps) {
   const [error, setError] = useState<string | null>(null);
   const [quickEditBrowserOpen, setQuickEditBrowserOpen] = useState(false);
   const [quickCreating, setQuickCreating] = useState(false);
+  const unlistenRef = useRef<UnlistenFn | null>(null);
+
+  // Cleanup listener on unmount
+  useEffect(() => {
+    return () => {
+      if (unlistenRef.current) {
+        unlistenRef.current();
+      }
+    };
+  }, []);
 
   const handleFilesSelected = useCallback((selected: FileEntry[]) => {
     const newFiles: SourceFile[] = selected.map((f, i) => ({
@@ -59,29 +71,19 @@ export function ProjectCreator({ onCreated, onCancel }: ProjectCreatorProps) {
     setError(null);
 
     try {
-      // Auto-generate project name from filename (without extension)
       const autoName = file.name.replace(/\.[^.]+$/, "");
 
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const project: Project = await invoke("create_project", {
+        request: {
           name: autoName,
           files: [file.path],
-        }),
+        },
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Failed to create project" }));
-        throw new Error(data.error || "Failed to create project");
-      }
-
-      const project = await res.json();
-      const detailRes = await fetch(`/api/projects/${project.id}`);
-      const detail: ProjectDetail = await detailRes.json();
+      const detail: ProjectDetail = await invoke("get_project", { id: project.id });
       onCreated(detail, { globalMode: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create project");
+      setError(err instanceof Error ? err.message : String(err));
       setQuickCreating(false);
     }
   }, [onCreated]);
@@ -92,72 +94,50 @@ export function ProjectCreator({ onCreated, onCancel }: ProjectCreatorProps) {
     setError(null);
 
     try {
-      // Create project
-      const res = await fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const project: Project = await invoke("create_project", {
+        request: {
           name: name.trim(),
           files: files.map((f) => f.filePath),
-        }),
+        },
       });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Failed to create project" }));
-        throw new Error(data.error || "Failed to create project");
-      }
-
-      const project = await res.json();
 
       // If multiple files, start concat and listen for progress
       if (files.length > 1 && project.concatStatus === "pending") {
-        const concatRes = await fetch("/api/concat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            projectId: project.id,
-            files: files.map((f) => f.filePath),
-          }),
+        await invoke("start_concat", {
+          projectId: project.id,
+          files: files.map((f) => f.filePath),
         });
 
-        if (!concatRes.ok) {
-          throw new Error("Failed to start concat");
-        }
-
         // Listen for concat progress
-        const es = new EventSource(`/api/concat-progress?projectId=${project.id}`);
-
         await new Promise<void>((resolve, reject) => {
-          es.onmessage = (event) => {
-            try {
-              const data: ConcatProgress = JSON.parse(event.data);
-              setConcatProgress(data);
+          listen<ConcatProgress>("concat-progress", (event) => {
+            const data = event.payload;
+            setConcatProgress(data);
 
-              if (data.status === "done") {
-                es.close();
-                resolve();
-              } else if (data.status === "error") {
-                es.close();
-                reject(new Error(data.error || "Concat failed"));
+            if (data.status === "done") {
+              if (unlistenRef.current) {
+                unlistenRef.current();
+                unlistenRef.current = null;
               }
-            } catch {
-              // ignore
+              resolve();
+            } else if (data.status === "error") {
+              if (unlistenRef.current) {
+                unlistenRef.current();
+                unlistenRef.current = null;
+              }
+              reject(new Error(data.error || "Concat failed"));
             }
-          };
-
-          es.onerror = () => {
-            es.close();
-            reject(new Error("Concat progress connection lost"));
-          };
+          }).then((unlisten) => {
+            unlistenRef.current = unlisten;
+          });
         });
       }
 
       // Fetch full project detail
-      const detailRes = await fetch(`/api/projects/${project.id}`);
-      const detail: ProjectDetail = await detailRes.json();
+      const detail: ProjectDetail = await invoke("get_project", { id: project.id });
       onCreated(detail);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create project");
+      setError(err instanceof Error ? err.message : String(err));
       setCreating(false);
     }
   };

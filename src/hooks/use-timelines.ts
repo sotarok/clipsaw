@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type { Timeline } from "@/types";
 
 export function useTimelines(projectId: string | null, initialTimelines: Timeline[] = []) {
@@ -23,10 +24,9 @@ export function useTimelines(projectId: string | null, initialTimelines: Timelin
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(async () => {
       try {
-        await fetch(`/api/projects/${projectIdRef.current}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ timelines: updated }),
+        await invoke("update_project", {
+          id: projectIdRef.current,
+          request: { timelines: updated },
         });
       } catch (err) {
         console.error("Failed to sync timelines:", err);

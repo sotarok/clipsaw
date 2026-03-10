@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectList } from "@/components/project-list";
@@ -35,14 +36,12 @@ export default function Home() {
   const split = useSplit();
 
   const mediaPath = project
-    ? (project.concatFilePath?.replace(/^\/media\//, "") ?? project.sourceFiles[0]?.filePath ?? "")
+    ? (project.concatFilePath ?? project.sourceFiles[0]?.filePath ?? "")
     : "";
 
   const handleSelectProject = useCallback(async (p: Project) => {
     try {
-      const res = await fetch(`/api/projects/${p.id}`);
-      if (!res.ok) throw new Error("Failed to load project");
-      const detail: ProjectDetail = await res.json();
+      const detail: ProjectDetail = await invoke("get_project", { id: p.id });
       setProject(detail);
       setOutputFormat(
         (detail.settings?.outputFormat as "copy" | "mp3") || "copy"

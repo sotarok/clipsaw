@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { WaveformCanvas } from "@/components/waveform-canvas";
-import type { WaveformPeak, Timeline, SourceFile } from "@/types";
+import type { WaveformPeak, WaveformResponse, Timeline, SourceFile } from "@/types";
 
 interface MediaPreviewProps {
   mediaType: "video" | "audio";
@@ -44,15 +46,13 @@ export function MediaPreview({
     if (volume > 0) prevVolumeRef.current = volume;
   }, [volume]);
 
-  // Fetch waveform data
+  // Fetch waveform data via Tauri command
   useEffect(() => {
     if (!mediaPath) return;
-    fetch("/api/waveform", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filePath: mediaPath, width: 2000 }),
+    invoke<WaveformResponse>("generate_waveform", {
+      filePath: mediaPath,
+      width: 2000,
     })
-      .then((r) => r.json())
       .then((data) => setPeaks(data.peaks || []))
       .catch(() => setPeaks([]));
   }, [mediaPath]);
@@ -67,7 +67,8 @@ export function MediaPreview({
     }
   };
 
-  const mediaUrl = `/api/media/${mediaPath}`;
+  // Use Tauri asset protocol for media files
+  const mediaUrl = mediaPath ? convertFileSrc(mediaPath) : "";
 
   return (
     <div className="space-y-2">

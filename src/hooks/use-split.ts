@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { SplitProgress, SplitSegment } from "@/types";
 
 export function useSplit() {
@@ -8,7 +10,7 @@ export function useSplit() {
   const [isRunning, setIsRunning] = useState(false);
   const [outputDir, setOutputDir] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const unlistenRef = useRef<UnlistenFn | null>(null);
 
   const startSplit = useCallback(async (
     projectId: string,
@@ -23,67 +25,55 @@ export function useSplit() {
     setError(null);
 
     try {
-      const res = await fetch("/api/split", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, segments, outputFormat, mp3Bitrate, outputSubDir }),
+      // Clean up previous listener
+      if (unlistenRef.current) {
+        unlistenRef.current();
+        unlistenRef.current = null;
+      }
+
+      // Listen for split progress events
+      unlistenRef.current = await listen<SplitProgress>("split-progress", (event) => {
+        const data = event.payload;
+        setProgress(data);
+
+        if (data.status === "complete") {
+          setOutputDir(data.outputDir || null);
+          setIsRunning(false);
+          if (unlistenRef.current) {
+            unlistenRef.current();
+            unlistenRef.current = null;
+          }
+        }
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Split failed" }));
-        throw new Error(data.error || "Split failed");
-      }
-
-      // Connect SSE for progress
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-
-      const es = new EventSource(`/api/split-progress?projectId=${projectId}`);
-      eventSourceRef.current = es;
-
-      es.onmessage = (event) => {
-        try {
-          const data: SplitProgress = JSON.parse(event.data);
-          setProgress(data);
-
-          if (data.status === "complete") {
-            setOutputDir(data.outputDir || null);
-            setIsRunning(false);
-            es.close();
-            eventSourceRef.current = null;
-          }
-        } catch {
-          // ignore parse errors
-        }
-      };
-
-      es.onerror = () => {
-        es.close();
-        eventSourceRef.current = null;
-        setIsRunning(false);
-        setError("Progress connection lost");
-      };
+      // Start split via Tauri command
+      await invoke("start_split", {
+        projectId,
+        segments,
+        outputFormat,
+        mp3Bitrate: mp3Bitrate || null,
+        outputSubDir: outputSubDir || null,
+      });
     } catch (err) {
       setIsRunning(false);
-      setError(err instanceof Error ? err.message : "Split failed");
+      setError(err instanceof Error ? err.message : String(err));
     }
   }, []);
 
-  // Cleanup EventSource on unmount
+  // Cleanup listener on unmount
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+      if (unlistenRef.current) {
+        unlistenRef.current();
+        unlistenRef.current = null;
       }
     };
   }, []);
 
   const reset = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    if (unlistenRef.current) {
+      unlistenRef.current();
+      unlistenRef.current = null;
     }
     setProgress(null);
     setIsRunning(false);

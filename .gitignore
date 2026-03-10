@@ -37,3 +37,9 @@ next-env.d.ts
 /input/
 /output/
 /data/
+
+# tauri
+/src-tauri/target/
+/src-tauri/gen/
+/src-tauri/bin/
+/src-tauri/icons/

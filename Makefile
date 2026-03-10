@@ -1,7 +1,7 @@
 VERSION := $(shell node -p "require('./package.json').version")
 IMAGE := clipsaw:$(VERSION)
 
-.PHONY: dev prod stop clean release
+.PHONY: dev prod stop clean release tauri-dev tauri-build
 
 # 開発 (ホットリロード)
 dev:
@@ -26,6 +26,14 @@ stop:
 # イメージ削除
 clean: stop
 	-docker rmi $(IMAGE)
+
+# Tauri 開発 (ネイティブアプリ)
+tauri-dev:
+	cargo tauri dev
+
+# Tauri プロダクションビルド
+tauri-build:
+	cargo tauri build
 
 # git tag + push + GitHub Release
 release:
