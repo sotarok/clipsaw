@@ -15,6 +15,7 @@ interface TimelineEditorProps {
   onRemove: (id: string) => void;
   onSetFrom: (id: string) => void;
   onSetTo: (id: string) => void;
+  onPlayRange: (from: number, to: number) => void;
 }
 
 export function TimelineEditor({
@@ -26,6 +27,7 @@ export function TimelineEditor({
   onRemove,
   onSetFrom,
   onSetTo,
+  onPlayRange,
 }: TimelineEditorProps) {
   return (
     <div className="space-y-2">
@@ -55,6 +57,7 @@ export function TimelineEditor({
                 onRemove={onRemove}
                 onSetFrom={onSetFrom}
                 onSetTo={onSetTo}
+                onPlayRange={onPlayRange}
               />
             ))}
           </div>

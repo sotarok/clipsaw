@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, SkipBack, SkipForward } from "lucide-react";
+import { X, SkipBack, SkipForward, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatTime, parseTime } from "@/lib/utils";
@@ -16,6 +16,7 @@ interface TimelineRowProps {
   onRemove: (id: string) => void;
   onSetFrom: (id: string) => void;
   onSetTo: (id: string) => void;
+  onPlayRange: (from: number, to: number) => void;
 }
 
 export function TimelineRow({
@@ -27,6 +28,7 @@ export function TimelineRow({
   onRemove,
   onSetFrom,
   onSetTo,
+  onPlayRange,
 }: TimelineRowProps) {
   const [editingFrom, setEditingFrom] = useState(false);
   const [editingTo, setEditingTo] = useState(false);
@@ -159,12 +161,23 @@ export function TimelineRow({
         </Button>
       </div>
 
-      {/* Mini bar */}
-      <div className="ml-7 mr-7 h-2 rounded-full bg-secondary relative overflow-hidden">
+      {/* Play range + Mini bar */}
+      <div className="flex items-center gap-2 pl-7 pr-7">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 px-0 shrink-0"
+          onClick={() => onPlayRange(timeline.fromTime, timeline.toTime)}
+          title="この区間を再生"
+        >
+          <Play className="h-3 w-3" />
+        </Button>
+      <div className="flex-1 h-2 rounded-full bg-secondary relative overflow-hidden">
         <div
           className="absolute top-0 h-full rounded-full bg-primary/60"
           style={{ left: `${barLeft}%`, width: `${barWidth}%` }}
         />
+      </div>
       </div>
     </div>
   );

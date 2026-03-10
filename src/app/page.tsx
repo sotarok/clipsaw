@@ -165,6 +165,7 @@ export default function Home() {
               onRemove={removeTimeline}
               onSetFrom={handleSetFrom}
               onSetTo={handleSetTo}
+              onPlayRange={player.playRange}
             />
 
             {/* Footer: Output settings + Split */}

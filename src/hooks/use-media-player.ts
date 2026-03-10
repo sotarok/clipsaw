@@ -33,6 +33,15 @@ export function useMediaPlayer() {
     mediaRef.current.currentTime = Math.max(0, Math.min(time, mediaRef.current.duration || 0));
   }, []);
 
+  const rangeEndRef = useRef<number | null>(null);
+
+  const playRange = useCallback((from: number, to: number) => {
+    if (!mediaRef.current) return;
+    rangeEndRef.current = to;
+    mediaRef.current.currentTime = from;
+    mediaRef.current.play();
+  }, []);
+
   const changeVolume = useCallback((v: number) => {
     if (!mediaRef.current) return;
     const clamped = Math.max(0, Math.min(1, v));
@@ -53,10 +62,19 @@ export function useMediaPlayer() {
 
     el.volume = volumeRef.current;
 
-    const onTimeUpdate = () => setCurrentTime(el.currentTime);
+    const onTimeUpdate = () => {
+      setCurrentTime(el.currentTime);
+      if (rangeEndRef.current !== null && el.currentTime >= rangeEndRef.current) {
+        el.pause();
+        rangeEndRef.current = null;
+      }
+    };
     const onDurationChange = () => setDuration(el.duration || 0);
     const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
+    const onPause = () => {
+      setIsPlaying(false);
+      rangeEndRef.current = null;
+    };
     const onEnded = () => setIsPlaying(false);
 
     el.addEventListener("timeupdate", onTimeUpdate);
@@ -92,5 +110,6 @@ export function useMediaPlayer() {
     togglePlay,
     seek,
     changeVolume,
+    playRange,
   };
 }
