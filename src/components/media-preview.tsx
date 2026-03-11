@@ -53,7 +53,10 @@ export function MediaPreview({
       width: 2000,
     })
       .then((data) => setPeaks(data.peaks || []))
-      .catch(() => setPeaks([]));
+      .catch((err) => {
+        console.error("[waveform] failed:", err, "mediaPath:", mediaPath);
+        setPeaks([]);
+      });
   }, [mediaPath]);
 
   const toggleMute = () => {
@@ -68,6 +71,12 @@ export function MediaPreview({
 
   // Use Tauri asset protocol for media files
   const mediaUrl = mediaPath ? convertFileSrc(mediaPath) : "";
+  // Debug: log the resolved media URL
+  useEffect(() => {
+    if (mediaUrl) {
+      console.log("[media] path:", mediaPath, "→ url:", mediaUrl);
+    }
+  }, [mediaUrl, mediaPath]);
 
   return (
     <div className="space-y-2">

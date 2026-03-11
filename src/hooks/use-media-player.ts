@@ -76,6 +76,10 @@ export function useMediaPlayer() {
       rangeEndRef.current = null;
     };
     const onEnded = () => setIsPlaying(false);
+    const onError = () => {
+      const e = el.error;
+      console.error("[media] error:", e?.code, e?.message, "src:", el.src, "networkState:", el.networkState, "readyState:", el.readyState);
+    };
 
     el.addEventListener("timeupdate", onTimeUpdate);
     el.addEventListener("durationchange", onDurationChange);
@@ -83,6 +87,7 @@ export function useMediaPlayer() {
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
     el.addEventListener("ended", onEnded);
+    el.addEventListener("error", onError);
 
     if (el.duration) {
       setDuration(el.duration);
@@ -95,6 +100,7 @@ export function useMediaPlayer() {
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
       el.removeEventListener("ended", onEnded);
+      el.removeEventListener("error", onError);
     };
   }, []);
 
