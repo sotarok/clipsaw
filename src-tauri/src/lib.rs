@@ -4,7 +4,7 @@ pub mod ffmpeg;
 
 use commands::AppState;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -39,8 +39,8 @@ pub fn run() {
             let state = Arc::new(AppState {
                 db: database,
                 data_dir,
-                input_dir,
-                output_dir,
+                input_dir: RwLock::new(input_dir),
+                output_dir: RwLock::new(output_dir),
             });
 
             app.manage(state);

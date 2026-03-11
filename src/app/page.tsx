@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectList } from "@/components/project-list";
 import { ProjectCreator } from "@/components/project-creator";
@@ -15,6 +15,7 @@ import { useMediaPlayer } from "@/hooks/use-media-player";
 import { useTimelines } from "@/hooks/use-timelines";
 import { useSplit } from "@/hooks/use-split";
 import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help";
+import { SettingsDialog, useNeedsSetup } from "@/components/settings-dialog";
 import type { Project, ProjectDetail } from "@/types";
 
 type Screen = "list" | "create" | "editor";
@@ -25,6 +26,8 @@ export default function Home() {
   const [outputFormat, setOutputFormat] = useState<"copy" | "mp3">("copy");
   const [mp3Bitrate, setMp3Bitrate] = useState("192k");
   const [isGlobalMode, setIsGlobalMode] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const { needsSetup, setNeedsSetup } = useNeedsSetup();
 
   const player = useMediaPlayer();
   const {
@@ -92,6 +95,34 @@ export default function Home() {
     );
   };
 
+  // Show setup screen on first launch
+  if (needsSetup === true) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8">
+        <div className="max-w-lg w-full space-y-6 text-center">
+          <h1 className="text-2xl font-bold text-primary">Clipsaw</h1>
+          <p className="text-muted-foreground">
+            はじめに、入力ディレクトリと出力ディレクトリを設定してください。
+          </p>
+          <SettingsDialog
+            open={true}
+            onClose={() => {}}
+            onSaved={() => setNeedsSetup(false)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (needsSetup === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground text-sm">読み込み中...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -105,7 +136,21 @@ export default function Home() {
         {project && screen === "editor" && (
           <span className="text-sm text-muted-foreground truncate">{project.name}</span>
         )}
+        <div className="flex-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setShowSettings(true)}
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
       </header>
+
+      <SettingsDialog
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
 
       {/* Content */}
       <main className="flex-1 overflow-auto">

@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use tauri::{AppHandle, Manager};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
@@ -17,17 +16,39 @@ pub struct MediaInfo {
     pub bit_rate: Option<i64>,
 }
 
-/// Resolve the sidecar binary path for ffmpeg/ffprobe
-fn sidecar_path(app: &AppHandle, name: &str) -> String {
-    app.path()
-        .resolve(format!("bin/{name}"), tauri::path::BaseDirectory::Resource)
-        .map(|p: std::path::PathBuf| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| name.to_string())
+/// Resolve the sidecar binary path for ffmpeg/ffprobe.
+/// In production bundle: next to the main executable (no target triple suffix).
+/// In dev mode: next to the main executable with target triple suffix.
+fn sidecar_path(name: &str) -> Result<String, String> {
+    let exe = std::env::current_exe()
+        .map_err(|e| format!("Failed to get current exe: {e}"))?;
+    let dir = exe
+        .parent()
+        .ok_or_else(|| "Failed to get exe directory".to_string())?;
+
+    // Production bundle: Tauri strips the target triple
+    let path = dir.join(name);
+    if path.exists() {
+        return Ok(path.to_string_lossy().to_string());
+    }
+
+    // Dev mode: Tauri keeps the target triple suffix
+    let target = env!("TARGET_TRIPLE");
+    let path_with_triple = dir.join(format!("{name}-{target}"));
+    if path_with_triple.exists() {
+        return Ok(path_with_triple.to_string_lossy().to_string());
+    }
+
+    Err(format!(
+        "Sidecar '{name}' not found at '{}' or '{}'",
+        path.display(),
+        path_with_triple.display()
+    ))
 }
 
 /// Get media info via FFprobe
-pub async fn probe_media(app: &AppHandle, file_path: &str) -> Result<MediaInfo, String> {
-    let ffprobe = sidecar_path(app, "ffprobe");
+pub async fn probe_media(file_path: &str) -> Result<MediaInfo, String> {
+    let ffprobe = sidecar_path("ffprobe")?;
     let output = Command::new(&ffprobe)
         .args([
             "-v", "quiet",
@@ -90,7 +111,6 @@ pub async fn probe_media(app: &AppHandle, file_path: &str) -> Result<MediaInfo, 
 
 /// Split media file without progress
 pub async fn split_media(
-    app: &AppHandle,
     input: &str,
     output: &str,
     from: f64,
@@ -98,7 +118,7 @@ pub async fn split_media(
     format: &str,
     bitrate: Option<&str>,
 ) -> Result<(), String> {
-    let ffmpeg = sidecar_path(app, "ffmpeg");
+    let ffmpeg = sidecar_path("ffmpeg")?;
     let mut args = vec![
         "-y".to_string(),
         "-i".to_string(),
@@ -147,7 +167,6 @@ pub async fn split_media(
 
 /// Split media with progress reporting via callback
 pub async fn split_media_with_progress<F>(
-    app: &AppHandle,
     input: &str,
     output: &str,
     from: f64,
@@ -159,7 +178,7 @@ pub async fn split_media_with_progress<F>(
 where
     F: Fn(u32) + Send + 'static,
 {
-    let ffmpeg = sidecar_path(app, "ffmpeg");
+    let ffmpeg = sidecar_path("ffmpeg")?;
     let duration = to - from;
     let mut args = vec![
         "-y".to_string(),
@@ -232,7 +251,6 @@ where
 
 /// Concat files using concat demuxer
 pub async fn concat_media<F>(
-    app: &AppHandle,
     list_file_path: &str,
     output_path: &str,
     total_duration: f64,
@@ -241,7 +259,7 @@ pub async fn concat_media<F>(
 where
     F: Fn(u32) + Send + 'static,
 {
-    let ffmpeg = sidecar_path(app, "ffmpeg");
+    let ffmpeg = sidecar_path("ffmpeg")?;
     let args = vec![
         "-y",
         "-f", "concat",
@@ -291,11 +309,10 @@ where
 
 /// Generate raw PCM data for waveform visualization
 pub async fn generate_pcm(
-    app: &AppHandle,
     file_path: &str,
     target_samples: u32,
 ) -> Result<Vec<u8>, String> {
-    let ffmpeg = sidecar_path(app, "ffmpeg");
+    let ffmpeg = sidecar_path("ffmpeg")?;
     let sample_rate = target_samples.max(100).min(8000);
     let args = vec![
         "-i".to_string(),

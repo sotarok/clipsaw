@@ -4,15 +4,15 @@ use md5::{Digest, Md5};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tauri::{AppHandle, Emitter, State};
 use walkdir::WalkDir;
 
 pub struct AppState {
     pub db: Database,
     pub data_dir: PathBuf,
-    pub input_dir: Option<PathBuf>,
-    pub output_dir: Option<PathBuf>,
+    pub input_dir: RwLock<Option<PathBuf>>,
+    pub output_dir: RwLock<Option<PathBuf>>,
 }
 
 // === Types ===
@@ -135,13 +135,14 @@ pub async fn list_projects(state: State<'_, Arc<AppState>>) -> Result<ListProjec
 
 #[tauri::command]
 pub async fn create_project(
-    app: AppHandle,
     state: State<'_, Arc<AppState>>,
     request: CreateProjectRequest,
 ) -> Result<Project, String> {
     let input_dir = state
         .input_dir
-        .as_ref()
+        .read()
+        .map_err(|e| e.to_string())?
+        .clone()
         .ok_or("Input directory not configured")?;
 
     let now = chrono::Utc::now().timestamp_millis();
@@ -149,7 +150,7 @@ pub async fn create_project(
 
     // Probe first file for duration and media type
     let first_file_path = input_dir.join(&request.files[0]);
-    let info = ffmpeg::probe_media(&app, first_file_path.to_str().unwrap_or(""))
+    let info = ffmpeg::probe_media(first_file_path.to_str().unwrap_or(""))
         .await?;
 
     let concat_status = if request.files.len() > 1 {
@@ -177,7 +178,7 @@ pub async fn create_project(
         let duration = if i == 0 {
             Some(info.duration)
         } else {
-            ffmpeg::probe_media(&app, full_path.to_str().unwrap_or(""))
+            ffmpeg::probe_media(full_path.to_str().unwrap_or(""))
                 .await
                 .map(|info| Some(info.duration))
                 .unwrap_or(None)
@@ -262,7 +263,9 @@ pub async fn delete_project(state: State<'_, Arc<AppState>>, id: String) -> Resu
 pub async fn list_files(state: State<'_, Arc<AppState>>) -> Result<Vec<FileEntry>, String> {
     let input_dir = state
         .input_dir
-        .as_ref()
+        .read()
+        .map_err(|e| e.to_string())?
+        .clone()
         .ok_or("Input directory not configured")?;
 
     if !input_dir.exists() {
@@ -271,7 +274,7 @@ pub async fn list_files(state: State<'_, Arc<AppState>>) -> Result<Vec<FileEntry
 
     let mut entries = Vec::new();
 
-    for entry in WalkDir::new(input_dir)
+    for entry in WalkDir::new(&input_dir)
         .follow_links(true)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -291,7 +294,7 @@ pub async fn list_files(state: State<'_, Arc<AppState>>) -> Result<Vec<FileEntry
         }
 
         let relative = path
-            .strip_prefix(input_dir)
+            .strip_prefix(&input_dir)
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default();
 
@@ -342,15 +345,17 @@ pub async fn start_split(
 
     let input_dir = state
         .input_dir
-        .as_ref()
-        .ok_or("Input directory not configured")?
-        .clone();
+        .read()
+        .map_err(|e| e.to_string())?
+        .clone()
+        .ok_or("Input directory not configured")?;
 
     let output_dir_base = state
         .output_dir
-        .as_ref()
-        .ok_or("Output directory not configured")?
-        .clone();
+        .read()
+        .map_err(|e| e.to_string())?
+        .clone()
+        .ok_or("Output directory not configured")?;
 
     // Determine input file
     let input_file = if let Some(ref concat_path) = project.concat_file_path {
@@ -419,7 +424,6 @@ pub async fn start_split(
             let app_for_progress = app_handle.clone();
 
             let result = ffmpeg::split_media_with_progress(
-                &app_handle,
                 input_file.to_str().unwrap_or(""),
                 output_file.to_str().unwrap_or(""),
                 seg.from,
@@ -483,9 +487,10 @@ pub async fn start_concat(
 ) -> Result<(), String> {
     let input_dir = state
         .input_dir
-        .as_ref()
-        .ok_or("Input directory not configured")?
-        .clone();
+        .read()
+        .map_err(|e| e.to_string())?
+        .clone()
+        .ok_or("Input directory not configured")?;
 
     let data_dir = state.data_dir.clone();
     let concat_dir = data_dir.join("concat");
@@ -548,7 +553,6 @@ pub async fn start_concat(
         let pid = project_id_for_task.clone();
 
         let result = ffmpeg::concat_media(
-            &app_handle,
             list_path.to_str().unwrap_or(""),
             output_path.to_str().unwrap_or(""),
             total_duration,
@@ -574,7 +578,7 @@ pub async fn start_concat(
             Ok(()) => {
                 // Probe result for accurate duration
                 let probe_result =
-                    ffmpeg::probe_media(&app_handle, output_path.to_str().unwrap_or("")).await;
+                    ffmpeg::probe_media(output_path.to_str().unwrap_or("")).await;
 
                 let duration = probe_result.as_ref().map(|i| i.duration).ok();
 
@@ -620,14 +624,15 @@ pub async fn start_concat(
 
 #[tauri::command]
 pub async fn generate_waveform(
-    app: AppHandle,
     state: State<'_, Arc<AppState>>,
     file_path: String,
     width: Option<u32>,
 ) -> Result<WaveformResponse, String> {
     let input_dir = state
         .input_dir
-        .as_ref()
+        .read()
+        .map_err(|e| e.to_string())?
+        .clone()
         .ok_or("Input directory not configured")?;
 
     let width = width.unwrap_or(2000);
@@ -669,11 +674,11 @@ pub async fn generate_waveform(
     }
 
     // Probe for metadata
-    let info = ffmpeg::probe_media(&app, &full_path_str).await?;
+    let info = ffmpeg::probe_media(&full_path_str).await?;
 
     // Generate PCM
     let target_samples = width * 4;
-    let pcm_data = ffmpeg::generate_pcm(&app, &full_path_str, target_samples).await?;
+    let pcm_data = ffmpeg::generate_pcm(&full_path_str, target_samples).await?;
 
     // Convert to f32 samples
     let total_samples = pcm_data.len() / 4;
@@ -768,10 +773,12 @@ pub async fn open_folder(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn get_app_dirs(state: State<'_, Arc<AppState>>) -> Result<serde_json::Value, String> {
+    let input_dir = state.input_dir.read().map_err(|e| e.to_string())?;
+    let output_dir = state.output_dir.read().map_err(|e| e.to_string())?;
     Ok(serde_json::json!({
         "dataDir": state.data_dir.to_string_lossy(),
-        "inputDir": state.input_dir.as_ref().map(|p| p.to_string_lossy().to_string()),
-        "outputDir": state.output_dir.as_ref().map(|p| p.to_string_lossy().to_string()),
+        "inputDir": input_dir.as_ref().map(|p| p.to_string_lossy().to_string()),
+        "outputDir": output_dir.as_ref().map(|p| p.to_string_lossy().to_string()),
     }))
 }
 
@@ -780,11 +787,14 @@ pub async fn set_input_dir(
     state: State<'_, Arc<AppState>>,
     path: String,
 ) -> Result<(), String> {
-    // We can't mutate through Arc directly, so store in a config file
     let config_path = state.data_dir.join("config.json");
     let mut config = load_config(&config_path);
     config["inputDir"] = serde_json::json!(path);
     save_config(&config_path, &config)?;
+
+    // Update runtime state
+    let mut input_dir = state.input_dir.write().map_err(|e| e.to_string())?;
+    *input_dir = Some(PathBuf::from(path));
     Ok(())
 }
 
@@ -797,6 +807,10 @@ pub async fn set_output_dir(
     let mut config = load_config(&config_path);
     config["outputDir"] = serde_json::json!(path);
     save_config(&config_path, &config)?;
+
+    // Update runtime state
+    let mut output_dir = state.output_dir.write().map_err(|e| e.to_string())?;
+    *output_dir = Some(PathBuf::from(path));
     Ok(())
 }
 
