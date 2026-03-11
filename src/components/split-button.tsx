@@ -1,6 +1,6 @@
 "use client";
 
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/tauri";
 import { Scissors, Loader2, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";

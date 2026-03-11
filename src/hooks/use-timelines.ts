@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/tauri";
 import type { Timeline } from "@/types";
 
 export function useTimelines(projectId: string | null, initialTimelines: Timeline[] = []) {

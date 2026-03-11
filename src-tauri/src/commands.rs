@@ -112,6 +112,7 @@ pub struct WaveformResponse {
 pub async fn list_projects(state: State<'_, Arc<AppState>>) -> Result<ListProjectsResponse, String> {
     let projects = state.db.list_projects().map_err(|e| e.to_string())?;
     let all_source_files = state.db.get_all_source_files().map_err(|e| e.to_string())?;
+    let input_dir = state.input_dir.read().map_err(|e| e.to_string())?.clone();
 
     let projects_with_files: Vec<ProjectWithSourceFiles> = projects
         .into_iter()
@@ -120,6 +121,14 @@ pub async fn list_projects(state: State<'_, Arc<AppState>>) -> Result<ListProjec
                 .iter()
                 .filter(|sf| sf.project_id == p.id)
                 .cloned()
+                .map(|mut sf| {
+                    if let Some(ref dir) = input_dir {
+                        if !Path::new(&sf.file_path).is_absolute() {
+                            sf.file_path = dir.join(&sf.file_path).to_string_lossy().to_string();
+                        }
+                    }
+                    sf
+                })
                 .collect();
             ProjectWithSourceFiles {
                 project: p,
@@ -216,11 +225,22 @@ pub async fn get_project(
     state: State<'_, Arc<AppState>>,
     id: String,
 ) -> Result<ProjectDetail, String> {
-    state
+    let mut detail = state
         .db
         .get_project_detail(&id)
         .map_err(|e| e.to_string())?
-        .ok_or_else(|| "Project not found".to_string())
+        .ok_or_else(|| "Project not found".to_string())?;
+
+    // Resolve source file paths to absolute paths
+    if let Some(input_dir) = state.input_dir.read().map_err(|e| e.to_string())?.as_ref() {
+        for sf in &mut detail.source_files {
+            if !Path::new(&sf.file_path).is_absolute() {
+                sf.file_path = input_dir.join(&sf.file_path).to_string_lossy().to_string();
+            }
+        }
+    }
+
+    Ok(detail)
 }
 
 #[tauri::command]

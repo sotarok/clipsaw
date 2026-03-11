@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/tauri";
 import { ArrowLeft, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectList } from "@/components/project-list";
@@ -16,6 +16,7 @@ import { useTimelines } from "@/hooks/use-timelines";
 import { useSplit } from "@/hooks/use-split";
 import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help";
 import { SettingsDialog, useNeedsSetup } from "@/components/settings-dialog";
+import { DebugPanel } from "@/components/debug-panel";
 import type { Project, ProjectDetail } from "@/types";
 
 type Screen = "list" | "create" | "editor";
@@ -235,6 +236,7 @@ export default function Home() {
         )}
       </main>
       <KeyboardShortcutsHelp />
+      <DebugPanel />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/lib/tauri";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
