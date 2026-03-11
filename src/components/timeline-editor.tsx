@@ -2,7 +2,6 @@
 
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { TimelineRow } from "@/components/timeline-row";
 import type { Timeline } from "@/types";
 
@@ -44,24 +43,22 @@ export function TimelineEditor({
           タイムラインを追加して分割区間を設定してください
         </div>
       ) : (
-        <ScrollArea className="max-h-[40vh]">
-          <div className="border border-border rounded-md divide-y divide-border">
-            {timelines.map((timeline, index) => (
-              <TimelineRow
-                key={timeline.id}
-                timeline={timeline}
-                index={index}
-                duration={duration}
-                currentTime={currentTime}
-                onUpdate={onUpdate}
-                onRemove={onRemove}
-                onSetFrom={onSetFrom}
-                onSetTo={onSetTo}
-                onPlayRange={onPlayRange}
-              />
-            ))}
-          </div>
-        </ScrollArea>
+        <div className="border border-border rounded-md divide-y divide-border">
+          {timelines.map((timeline, index) => (
+            <TimelineRow
+              key={timeline.id}
+              timeline={timeline}
+              index={index}
+              duration={duration}
+              currentTime={currentTime}
+              onUpdate={onUpdate}
+              onRemove={onRemove}
+              onSetFrom={onSetFrom}
+              onSetTo={onSetTo}
+              onPlayRange={onPlayRange}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
