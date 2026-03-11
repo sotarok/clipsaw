@@ -125,7 +125,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
       <header className="border-b border-border px-4 py-3 flex items-center gap-3 shrink-0">
         {screen === "editor" && (
@@ -154,7 +154,7 @@ export default function Home() {
       />
 
       {/* Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto min-h-0">
         {screen === "list" && (
           <div className="max-w-2xl mx-auto p-6">
             <ProjectList
@@ -212,29 +212,33 @@ export default function Home() {
               onSetTo={handleSetTo}
               onPlayRange={player.playRange}
             />
-
-            {/* Footer: Output settings + Split */}
-            <div className="border-t border-border pt-4 flex items-center justify-between gap-4">
-              <OutputSettings
-                outputFormat={outputFormat}
-                mp3Bitrate={mp3Bitrate}
-                mediaType={(project.mediaType as "video" | "audio") || null}
-                onFormatChange={setOutputFormat}
-                onBitrateChange={setMp3Bitrate}
-              />
-              <SplitButton
-                isRunning={split.isRunning}
-                progress={split.progress}
-                outputDir={split.outputDir}
-                error={split.error}
-                disabled={timelines.length === 0}
-                onSplit={handleSplit}
-                onReset={split.reset}
-              />
-            </div>
           </div>
         )}
       </main>
+
+      {/* Editor footer — outside main so it's not scrolled */}
+      {screen === "editor" && project && (
+        <div className="shrink-0 border-t border-border bg-background px-4 py-3">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+            <OutputSettings
+              outputFormat={outputFormat}
+              mp3Bitrate={mp3Bitrate}
+              mediaType={(project.mediaType as "video" | "audio") || null}
+              onFormatChange={setOutputFormat}
+              onBitrateChange={setMp3Bitrate}
+            />
+            <SplitButton
+              isRunning={split.isRunning}
+              progress={split.progress}
+              outputDir={split.outputDir}
+              error={split.error}
+              disabled={timelines.length === 0}
+              onSplit={handleSplit}
+              onReset={split.reset}
+            />
+          </div>
+        </div>
+      )}
       <KeyboardShortcutsHelp />
       <DebugPanel />
     </div>
